@@ -10,6 +10,10 @@ spring:
       name: janne
       password: adminpassword
       roles: ADMIN
+
+jwt:
+  secret: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
+  expiration: 86400000
   jpa:
     database-platform: org.hibernate.dialect.H2Dialect
     show-sql: false
