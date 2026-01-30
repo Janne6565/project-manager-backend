@@ -13,3 +13,7 @@ spring:
   datasource:
     url: jdbc:h2:mem:testdb
     driver-class-name: org.h2.Driver
+
+external:
+  contributions:
+    url: https://example.org

@@ -1,10 +1,13 @@
 package com.janne6565.projectmanager.entities;
 
+import com.janne6565.projectmanager.dto.external.contributions.ContributionDto;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -14,6 +17,7 @@ import java.util.Map;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
+
 public class Project {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -22,5 +26,19 @@ public class Project {
     private String description;
     @JdbcTypeCode(SqlTypes.JSON)
     private Map<String, String> additionalInformation;
+    @JdbcTypeCode(SqlTypes.JSON)
     private List<String> repositories;
+    @JdbcTypeCode(SqlTypes.JSON)
+    private List<ContributionDto> contributions;
+
+    public Project copy() {
+        return Project.builder()
+                .uuid(uuid)
+                .name(name)
+                .description(description)
+                .additionalInformation(new HashMap<>(additionalInformation))
+                .repositories(new ArrayList<>(repositories))
+                .contributions(new ArrayList<>(contributions))
+                .build();
+    }
 }
