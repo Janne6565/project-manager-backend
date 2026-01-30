@@ -5,6 +5,11 @@ server:
 spring:
   application:
     name: ProjectManager
+  security:
+    user:
+      name: janne
+      password: adminpassword
+      roles: ADMIN
   jpa:
     database-platform: org.hibernate.dialect.H2Dialect
     show-sql: false
