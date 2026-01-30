@@ -229,6 +229,71 @@ class ProjectControllerTest {
                 .andExpect(status().isForbidden());
     }
 
+    // ========== PUT Endpoint Tests ==========
+
+    @Test
+    void shouldUpdateProjectWithValidToken() throws Exception {
+        String token = getJwtToken();
+        
+        // Create a project first
+        Project project = TestFixtures.createTestProject("Original Project", "Original Description");
+        MvcResult createResult = mockMvc.perform(post("/projects")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(project)))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        Project createdProject = objectMapper.readValue(
+                createResult.getResponse().getContentAsString(),
+                Project.class
+        );
+
+        // Update the project
+        Project updateData = TestFixtures.createTestProject("Updated Project", "Updated Description");
+        mockMvc.perform(put("/projects/" + createdProject.getUuid())
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateData)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.uuid").value(createdProject.getUuid()))
+                .andExpect(jsonPath("$.name").value("Updated Project"))
+                .andExpect(jsonPath("$.description").value("Updated Description"));
+    }
+
+    @Test
+    void shouldReturnNotFoundWhenUpdatingNonExistentProject() throws Exception {
+        String token = getJwtToken();
+        Project updateData = TestFixtures.createTestProject("Updated Project", "Updated Description");
+
+        mockMvc.perform(put("/projects/non-existent-uuid")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateData)))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void shouldReturnForbiddenWhenUpdatingProjectWithoutToken() throws Exception {
+        Project updateData = TestFixtures.createTestProject("Updated Project", "Updated Description");
+
+        mockMvc.perform(put("/projects/some-uuid")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateData)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void shouldReturnForbiddenWhenUpdatingProjectWithInvalidToken() throws Exception {
+        Project updateData = TestFixtures.createTestProject("Updated Project", "Updated Description");
+
+        mockMvc.perform(put("/projects/some-uuid")
+                        .header("Authorization", "Bearer invalid.token.here")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateData)))
+                .andExpect(status().isForbidden());
+    }
+
     @Test
     void shouldCreateProjectWithAllFields() throws Exception {
         String token = getJwtToken();

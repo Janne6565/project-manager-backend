@@ -28,6 +28,15 @@ public class ProjectController {
         return ResponseEntity.ok(projectService.createProject(project));
     }
 
+    @PutMapping("/{uuid}")
+    public ResponseEntity<Project> updateProject(@PathVariable String uuid, @RequestBody Project project) {
+        Project updatedProject = projectService.updateProject(uuid, project);
+        if (updatedProject == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(updatedProject);
+    }
+
     @DeleteMapping("/{uuid}")
     public ResponseEntity<Void> deleteProject(@PathVariable String uuid) {
         projectService.deleteProject(uuid);

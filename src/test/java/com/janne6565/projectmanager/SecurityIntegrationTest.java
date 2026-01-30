@@ -233,4 +233,52 @@ class SecurityIntegrationTest {
         );
         assertThat(projects).hasSize(5);
     }
+
+    @Test
+    void shouldCompleteUpdateFlow() throws Exception {
+        // 1. Login
+        LoginRequest loginRequest = new LoginRequest(TestFixtures.TEST_USERNAME, TestFixtures.TEST_PASSWORD);
+        String token = objectMapper.readValue(
+                mockMvc.perform(post("/auth/login")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(loginRequest)))
+                        .andReturn().getResponse().getContentAsString(),
+                LoginResponse.class
+        ).getToken();
+
+        // 2. Create a project
+        Project newProject = TestFixtures.createTestProject("Original Name", "Original Description");
+        MvcResult createResult = mockMvc.perform(post("/projects")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(newProject)))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        Project createdProject = objectMapper.readValue(
+                createResult.getResponse().getContentAsString(),
+                Project.class
+        );
+
+        // 3. Update the project
+        Project updateData = TestFixtures.createTestProject("Updated Name", "Updated Description");
+        mockMvc.perform(put("/projects/" + createdProject.getUuid())
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateData)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Updated Name"))
+                .andExpect(jsonPath("$.description").value("Updated Description"));
+
+        // 4. Verify the update persisted
+        mockMvc.perform(get("/projects/" + createdProject.getUuid()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Updated Name"))
+                .andExpect(jsonPath("$.description").value("Updated Description"));
+
+        // 5. Clean up
+        mockMvc.perform(delete("/projects/" + createdProject.getUuid())
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk());
+    }
 }

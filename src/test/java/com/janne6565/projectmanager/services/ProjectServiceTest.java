@@ -43,6 +43,36 @@ class ProjectServiceTest {
     }
 
     @Test
+    void shouldUpdateProject() {
+        Project existingProject = TestFixtures.createTestProjectWithId("test-uuid", "Old Name", "Old Description");
+        Project updateData = TestFixtures.createTestProject("New Name", "New Description");
+        Project updatedProject = TestFixtures.createTestProjectWithId("test-uuid", "New Name", "New Description");
+        
+        when(projectRepository.findById("test-uuid")).thenReturn(Optional.of(existingProject));
+        when(projectRepository.save(any(Project.class))).thenReturn(updatedProject);
+
+        Project result = projectService.updateProject("test-uuid", updateData);
+
+        assertThat(result).isNotNull();
+        assertThat(result.getName()).isEqualTo("New Name");
+        assertThat(result.getDescription()).isEqualTo("New Description");
+        verify(projectRepository, times(1)).findById("test-uuid");
+        verify(projectRepository, times(1)).save(any(Project.class));
+    }
+
+    @Test
+    void shouldReturnNullWhenUpdatingNonExistentProject() {
+        Project updateData = TestFixtures.createTestProject("New Name", "New Description");
+        when(projectRepository.findById("non-existent")).thenReturn(Optional.empty());
+
+        Project result = projectService.updateProject("non-existent", updateData);
+
+        assertThat(result).isNull();
+        verify(projectRepository, times(1)).findById("non-existent");
+        verify(projectRepository, never()).save(any(Project.class));
+    }
+
+    @Test
     void shouldGetAllProjects() {
         List<Project> projects = List.of(
                 TestFixtures.createTestProjectWithId("uuid1", "Project 1", "Desc 1"),
