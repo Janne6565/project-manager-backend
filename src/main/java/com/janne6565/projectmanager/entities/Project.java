@@ -22,7 +22,7 @@ public class Project {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private String uuid;
-    private int index;
+    private Integer index;
     private String name;
     private String description;
     @JdbcTypeCode(SqlTypes.JSON)

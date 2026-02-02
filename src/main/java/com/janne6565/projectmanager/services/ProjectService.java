@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 
 @Slf4j
 @Service
@@ -62,8 +63,41 @@ public class ProjectService {
         if (project.getRepositories() == null) {
             return false;
         }
-        return project.getRepositories().stream().map(this::normalizeRepository).toList()
-                .contains(normalizeRepository(repository));
+
+        String normalizedRepository = normalizeRepository(repository);
+        List<String> normalizedConfiguredRepos = project.getRepositories().stream()
+                .map(this::normalizeRepository)
+                .toList();
+
+        // First, try exact match (backward compatibility)
+        if (normalizedConfiguredRepos.contains(normalizedRepository)) {
+            return true;
+        }
+
+        // Second, try glob pattern matching
+        return normalizedConfiguredRepos.stream()
+                .filter(configuredRepo -> configuredRepo.contains("*"))
+                .anyMatch(pattern -> matchesGlobPattern(normalizedRepository, pattern));
+    }
+
+    private boolean matchesGlobPattern(String repository, String globPattern) {
+        String regex = convertGlobToRegex(globPattern);
+        return Pattern.matches(regex, repository);
+    }
+
+    private String convertGlobToRegex(String globPattern) {
+        StringBuilder regex = new StringBuilder("^");
+        for (char c : globPattern.toCharArray()) {
+            if (c == '*') {
+                regex.append(".*");
+            } else if ("[](){}+.^$|\\?".indexOf(c) != -1) {
+                regex.append('\\').append(c);
+            } else {
+                regex.append(c);
+            }
+        }
+        regex.append("$");
+        return regex.toString();
     }
 
     private String normalizeRepository(String repository) {
@@ -76,7 +110,9 @@ public class ProjectService {
 
     public Project createProject(Project project) {
         project.setUuid(null);
+        project.setIndex((int) projectRepository.count() + 1);
         Project createdProject = projectRepository.save(project);
+        updateContributions();
         return createdProject;
     }
 
