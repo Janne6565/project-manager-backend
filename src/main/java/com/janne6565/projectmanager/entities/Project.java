@@ -36,9 +36,9 @@ public class Project {
                 .uuid(uuid)
                 .name(name)
                 .description(description)
-                .additionalInformation(new HashMap<>(additionalInformation))
-                .repositories(new ArrayList<>(repositories))
-                .contributions(new ArrayList<>(contributions))
+                .additionalInformation(additionalInformation != null ? new HashMap<>(additionalInformation) : new HashMap<>())
+                .repositories(repositories != null ? new ArrayList<>(repositories) : new ArrayList())
+                .contributions(contributions != null ? new ArrayList<>(contributions) : new ArrayList())
                 .build();
     }
 }
