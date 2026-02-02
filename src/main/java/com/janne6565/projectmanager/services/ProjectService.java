@@ -124,6 +124,8 @@ public class ProjectService {
                 .map(existingProject -> {
                     existingProject.setName(project.getName());
                     existingProject.setDescription(project.getDescription());
+                    existingProject.setDescriptionEn(project.getDescriptionEn());
+                    existingProject.setDescriptionDe(project.getDescriptionDe());
                     existingProject.setAdditionalInformation(project.getAdditionalInformation());
                     existingProject.setRepositories(project.getRepositories());
                     if (project.getIsVisible() != null) {

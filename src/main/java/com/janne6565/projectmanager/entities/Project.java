@@ -24,7 +24,12 @@ public class Project {
     private String uuid;
     private Integer index;
     private String name;
-    private String description;
+    @Column(length = 2000)
+    private String descriptionEn;
+    @Column(length = 2000)
+    private String descriptionDe;
+    @Deprecated
+    private String description; // Keep for backward compatibility
     @Column(nullable = false)
     @Builder.Default
     private Boolean isVisible = true;
@@ -41,6 +46,8 @@ public class Project {
                 .index(index)
                 .name(name)
                 .description(description)
+                .descriptionEn(descriptionEn)
+                .descriptionDe(descriptionDe)
                 .isVisible(isVisible)
                 .additionalInformation(additionalInformation != null ? new HashMap<>(additionalInformation) : new HashMap<>())
                 .repositories(repositories != null ? new ArrayList<>(repositories) : new ArrayList())
