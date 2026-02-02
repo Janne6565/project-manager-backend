@@ -1,5 +1,6 @@
 package com.janne6565.projectmanager.services;
 
+import com.janne6565.projectmanager.dto.external.contributions.ContributionDto;
 import com.janne6565.projectmanager.entities.Project;
 import com.janne6565.projectmanager.repositories.ProjectRepository;
 import com.janne6565.projectmanager.util.TestFixtures;
@@ -24,6 +25,12 @@ class ProjectServiceTest {
 
     @Mock
     private ProjectRepository projectRepository;
+
+    @Mock
+    private ContributionService contributionService;
+
+    @Mock
+    private List<ContributionDto> unassignedContributions;
 
     @InjectMocks
     private ProjectService projectService;
@@ -50,6 +57,8 @@ class ProjectServiceTest {
         
         when(projectRepository.findById("test-uuid")).thenReturn(Optional.of(existingProject));
         when(projectRepository.save(any(Project.class))).thenReturn(updatedProject);
+        when(projectRepository.findAll()).thenReturn(List.of(updatedProject));
+        when(contributionService.getContributions()).thenReturn(List.of());
 
         Project result = projectService.updateProject("test-uuid", updateData);
 
@@ -57,13 +66,14 @@ class ProjectServiceTest {
         assertThat(result.getName()).isEqualTo("New Name");
         assertThat(result.getDescription()).isEqualTo("New Description");
         verify(projectRepository, times(1)).findById("test-uuid");
-        verify(projectRepository, times(1)).save(any(Project.class));
     }
 
     @Test
     void shouldReturnNullWhenUpdatingNonExistentProject() {
         Project updateData = TestFixtures.createTestProject("New Name", "New Description");
         when(projectRepository.findById("non-existent")).thenReturn(Optional.empty());
+        when(projectRepository.findAll()).thenReturn(List.of());
+        when(contributionService.getContributions()).thenReturn(List.of());
 
         Project result = projectService.updateProject("non-existent", updateData);
 

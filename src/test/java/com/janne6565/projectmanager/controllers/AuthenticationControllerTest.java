@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.janne6565.projectmanager.config.TestConfig;
 import com.janne6565.projectmanager.dto.LoginRequest;
 import com.janne6565.projectmanager.util.TestFixtures;
+import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,7 +19,7 @@ import org.springframework.web.context.WebApplicationContext;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest
@@ -50,14 +51,20 @@ class AuthenticationControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(loginRequest)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.token").exists())
-                .andExpect(jsonPath("$.token").isNotEmpty())
-                .andExpect(jsonPath("$.expiresIn").value(3600000))
+                .andExpect(jsonPath("$.message").value("Login successful"))
                 .andExpect(jsonPath("$.username").value(TestFixtures.TEST_USERNAME))
+                .andExpect(jsonPath("$.expiresIn").value(3600000))
+                .andExpect(cookie().exists("JWT-TOKEN"))
+                .andExpect(cookie().httpOnly("JWT-TOKEN", true))
+                .andExpect(cookie().path("JWT-TOKEN", "/"))
                 .andReturn();
 
-        String responseBody = result.getResponse().getContentAsString();
-        assertThat(responseBody).contains("token");
+        String cookieValue = result.getResponse().getCookie("JWT-TOKEN").getValue();
+        assertThat(cookieValue).isNotEmpty();
+        
+        // JWT should have 3 parts separated by dots
+        String[] jwtParts = cookieValue.split("\\.");
+        assertThat(jwtParts).hasSize(3);
     }
 
     @Test
@@ -96,13 +103,72 @@ class AuthenticationControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(loginRequest)))
                 .andExpect(status().isOk())
+                .andExpect(cookie().exists("JWT-TOKEN"))
                 .andReturn();
 
-        String token = objectMapper.readTree(result.getResponse().getContentAsString())
-                .get("token").asText();
+        String token = result.getResponse().getCookie("JWT-TOKEN").getValue();
 
         // JWT should have 3 parts separated by dots
         String[] jwtParts = token.split("\\.");
         assertThat(jwtParts).hasSize(3);
+    }
+
+    @Test
+    void shouldLogoutAndClearCookie() throws Exception {
+        mockMvc.perform(post("/auth/logout"))
+                .andExpect(status().isOk())
+                .andExpect(cookie().exists("JWT-TOKEN"))
+                .andExpect(cookie().maxAge("JWT-TOKEN", 0));
+    }
+
+    @Test
+    void shouldReturnAuthenticatedStatusWhenLoggedIn() throws Exception {
+        // First login to get cookie
+        LoginRequest loginRequest = new LoginRequest(TestFixtures.TEST_USERNAME, TestFixtures.TEST_PASSWORD);
+        MvcResult loginResult = mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(loginRequest)))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        Cookie jwtCookie = loginResult.getResponse().getCookie("JWT-TOKEN");
+
+        // Check status with valid cookie
+        mockMvc.perform(get("/auth/status")
+                        .cookie(jwtCookie))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.authenticated").value(true))
+                .andExpect(jsonPath("$.username").value(TestFixtures.TEST_USERNAME));
+    }
+
+    @Test
+    void shouldReturnUnauthenticatedStatusWhenNotLoggedIn() throws Exception {
+        mockMvc.perform(get("/auth/status"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.authenticated").value(false))
+                .andExpect(jsonPath("$.username").doesNotExist());
+    }
+
+    @Test
+    void shouldReturnUnauthenticatedStatusAfterLogout() throws Exception {
+        // Login
+        LoginRequest loginRequest = new LoginRequest(TestFixtures.TEST_USERNAME, TestFixtures.TEST_PASSWORD);
+        MvcResult loginResult = mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(loginRequest)))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        Cookie jwtCookie = loginResult.getResponse().getCookie("JWT-TOKEN");
+
+        // Logout
+        mockMvc.perform(post("/auth/logout")
+                        .cookie(jwtCookie))
+                .andExpect(status().isOk());
+
+        // Check status should be unauthenticated
+        mockMvc.perform(get("/auth/status"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.authenticated").value(false));
     }
 }

@@ -1,6 +1,26 @@
 jwt:
   secret: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
   expiration: 3600000
+  cookie:
+    name: JWT-TOKEN
+    secure: false
+    same-site: Lax
+
+cors:
+  enabled: true
+  allowed-origins:
+    - http://localhost:3000
+  allowed-methods:
+    - GET
+    - POST
+    - PUT
+    - PATCH
+    - DELETE
+    - OPTIONS
+  allowed-headers:
+    - "*"
+  allow-credentials: true
+  max-age: 3600
 
 spring:
   security:
@@ -16,4 +36,4 @@ spring:
 
 external:
   contributions:
-    url: https://example.org
+    url: https://project-fetcher.jannekeipert.de/api

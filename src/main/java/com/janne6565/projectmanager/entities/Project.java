@@ -22,6 +22,7 @@ public class Project {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private String uuid;
+    private int index;
     private String name;
     private String description;
     @JdbcTypeCode(SqlTypes.JSON)
@@ -34,6 +35,7 @@ public class Project {
     public Project copy() {
         return Project.builder()
                 .uuid(uuid)
+                .index(index)
                 .name(name)
                 .description(description)
                 .additionalInformation(additionalInformation != null ? new HashMap<>(additionalInformation) : new HashMap<>())

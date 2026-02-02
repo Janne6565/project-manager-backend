@@ -1,5 +1,6 @@
 package com.janne6565.projectmanager.controllers;
 
+import com.janne6565.projectmanager.dto.UpdateIndexRequest;
 import com.janne6565.projectmanager.entities.Project;
 import com.janne6565.projectmanager.services.ProjectService;
 import lombok.RequiredArgsConstructor;
@@ -41,5 +42,14 @@ public class ProjectController {
     public ResponseEntity<Void> deleteProject(@PathVariable String uuid) {
         projectService.deleteProject(uuid);
         return ResponseEntity.ok().build();
+    }
+
+    @PatchMapping("/{uuid}/index")
+    public ResponseEntity<Project> updateProjectIndex(@PathVariable String uuid, @RequestBody UpdateIndexRequest request) {
+        Project updatedProject = projectService.updateProjectIndex(uuid, request.getIndex());
+        if (updatedProject == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(updatedProject);
     }
 }

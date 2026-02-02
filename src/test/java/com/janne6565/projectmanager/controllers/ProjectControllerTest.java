@@ -2,11 +2,11 @@ package com.janne6565.projectmanager.controllers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.janne6565.projectmanager.dto.LoginRequest;
-import com.janne6565.projectmanager.dto.LoginResponse;
 import com.janne6565.projectmanager.entities.Project;
 import com.janne6565.projectmanager.repositories.ProjectRepository;
 import com.janne6565.projectmanager.util.TestFixtures;
 import com.janne6565.projectmanager.config.TestConfig;
+import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -54,7 +54,7 @@ class ProjectControllerTest {
         projectRepository.deleteAll();
     }
 
-    private String getJwtToken() throws Exception {
+    private Cookie getJwtCookie() throws Exception {
         LoginRequest loginRequest = new LoginRequest(TestFixtures.TEST_USERNAME, TestFixtures.TEST_PASSWORD);
         MvcResult result = mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -62,11 +62,7 @@ class ProjectControllerTest {
                 .andExpect(status().isOk())
                 .andReturn();
 
-        LoginResponse response = objectMapper.readValue(
-                result.getResponse().getContentAsString(),
-                LoginResponse.class
-        );
-        return response.getToken();
+        return result.getResponse().getCookie("JWT-TOKEN");
     }
 
     // ========== Public Endpoints Tests ==========
@@ -88,19 +84,19 @@ class ProjectControllerTest {
 
     @Test
     void shouldReturnAllProjectsAfterCreation() throws Exception {
-        String token = getJwtToken();
+        Cookie jwtCookie = getJwtCookie();
 
         // Create two projects
         Project project1 = TestFixtures.createTestProject("Project 1", "Description 1");
         mockMvc.perform(post("/projects")
-                        .header("Authorization", "Bearer " + token)
+                        .cookie(jwtCookie)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(project1)))
                 .andExpect(status().isOk());
 
         Project project2 = TestFixtures.createTestProject("Project 2", "Description 2");
         mockMvc.perform(post("/projects")
-                        .header("Authorization", "Bearer " + token)
+                        .cookie(jwtCookie)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(project2)))
                 .andExpect(status().isOk());
@@ -116,12 +112,12 @@ class ProjectControllerTest {
 
     @Test
     void shouldGetProjectByIdWithoutAuthentication() throws Exception {
-        String token = getJwtToken();
+        Cookie jwtCookie = getJwtCookie();
         Project project = TestFixtures.createTestProject("Test Project", "Test Description");
 
         // Create project first
         MvcResult createResult = mockMvc.perform(post("/projects")
-                        .header("Authorization", "Bearer " + token)
+                        .cookie(jwtCookie)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(project)))
                 .andExpect(status().isOk())
@@ -151,11 +147,11 @@ class ProjectControllerTest {
 
     @Test
     void shouldCreateProjectWithValidToken() throws Exception {
-        String token = getJwtToken();
+        Cookie jwtCookie = getJwtCookie();
         Project project = TestFixtures.createTestProject("New Project", "New Description");
 
         mockMvc.perform(post("/projects")
-                        .header("Authorization", "Bearer " + token)
+                        .cookie(jwtCookie)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(project)))
                 .andExpect(status().isOk())
@@ -189,12 +185,12 @@ class ProjectControllerTest {
 
     @Test
     void shouldDeleteProjectWithValidToken() throws Exception {
-        String token = getJwtToken();
+        Cookie jwtCookie = getJwtCookie();
         Project project = TestFixtures.createTestProject("Project to Delete", "Description");
 
         // Create project
         MvcResult createResult = mockMvc.perform(post("/projects")
-                        .header("Authorization", "Bearer " + token)
+                        .cookie(jwtCookie)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(project)))
                 .andExpect(status().isOk())
@@ -207,7 +203,7 @@ class ProjectControllerTest {
 
         // Delete project
         mockMvc.perform(delete("/projects/" + createdProject.getUuid())
-                        .header("Authorization", "Bearer " + token))
+                        .cookie(jwtCookie))
                 .andExpect(status().isOk());
 
         // Verify deletion
@@ -233,12 +229,12 @@ class ProjectControllerTest {
 
     @Test
     void shouldUpdateProjectWithValidToken() throws Exception {
-        String token = getJwtToken();
+        Cookie jwtCookie = getJwtCookie();
         
         // Create a project first
         Project project = TestFixtures.createTestProject("Original Project", "Original Description");
         MvcResult createResult = mockMvc.perform(post("/projects")
-                        .header("Authorization", "Bearer " + token)
+                        .cookie(jwtCookie)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(project)))
                 .andExpect(status().isOk())
@@ -252,7 +248,7 @@ class ProjectControllerTest {
         // Update the project
         Project updateData = TestFixtures.createTestProject("Updated Project", "Updated Description");
         mockMvc.perform(put("/projects/" + createdProject.getUuid())
-                        .header("Authorization", "Bearer " + token)
+                        .cookie(jwtCookie)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(updateData)))
                 .andExpect(status().isOk())
@@ -263,11 +259,11 @@ class ProjectControllerTest {
 
     @Test
     void shouldReturnNotFoundWhenUpdatingNonExistentProject() throws Exception {
-        String token = getJwtToken();
+        Cookie jwtCookie = getJwtCookie();
         Project updateData = TestFixtures.createTestProject("Updated Project", "Updated Description");
 
         mockMvc.perform(put("/projects/non-existent-uuid")
-                        .header("Authorization", "Bearer " + token)
+                        .cookie(jwtCookie)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(updateData)))
                 .andExpect(status().isNotFound());
@@ -296,11 +292,11 @@ class ProjectControllerTest {
 
     @Test
     void shouldCreateProjectWithAllFields() throws Exception {
-        String token = getJwtToken();
+        Cookie jwtCookie = getJwtCookie();
         Project project = TestFixtures.createTestProjectWithId(null, "Full Project", "Full Description");
 
         MvcResult result = mockMvc.perform(post("/projects")
-                        .header("Authorization", "Bearer " + token)
+                        .cookie(jwtCookie)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(project)))
                 .andExpect(status().isOk())
@@ -316,5 +312,59 @@ class ProjectControllerTest {
                 Project.class
         );
         assertThat(createdProject.getAdditionalInformation()).containsKey("status");
+    }
+
+    @Test
+    void shouldUpdateProjectIndex() throws Exception {
+        Cookie jwtCookie = getJwtCookie();
+        
+        // Create a project
+        Project project = TestFixtures.createTestProject("Test Project", "Description");
+        project.setIndex(0);
+        MvcResult createResult = mockMvc.perform(post("/projects")
+                        .cookie(jwtCookie)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(project)))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        Project createdProject = objectMapper.readValue(
+                createResult.getResponse().getContentAsString(),
+                Project.class
+        );
+
+        // Update the index
+        mockMvc.perform(patch("/projects/" + createdProject.getUuid() + "/index")
+                        .cookie(jwtCookie)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"index\": 5}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.index").value(5))
+                .andExpect(jsonPath("$.name").value("Test Project"))
+                .andExpect(jsonPath("$.description").value("Description"));
+
+        // Verify the index was updated in the database
+        Project updatedProject = projectRepository.findById(createdProject.getUuid()).orElse(null);
+        assertThat(updatedProject).isNotNull();
+        assertThat(updatedProject.getIndex()).isEqualTo(5);
+    }
+
+    @Test
+    void shouldReturnNotFoundWhenUpdatingIndexOfNonExistentProject() throws Exception {
+        Cookie jwtCookie = getJwtCookie();
+
+        mockMvc.perform(patch("/projects/non-existent-uuid/index")
+                        .cookie(jwtCookie)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"index\": 5}"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void shouldReturnForbiddenWhenUpdatingIndexWithoutToken() throws Exception {
+        mockMvc.perform(patch("/projects/some-uuid/index")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"index\": 5}"))
+                .andExpect(status().isForbidden());
     }
 }

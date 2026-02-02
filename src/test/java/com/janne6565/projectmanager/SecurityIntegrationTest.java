@@ -2,11 +2,11 @@ package com.janne6565.projectmanager;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.janne6565.projectmanager.dto.LoginRequest;
-import com.janne6565.projectmanager.dto.LoginResponse;
 import com.janne6565.projectmanager.entities.Project;
 import com.janne6565.projectmanager.repositories.ProjectRepository;
 import com.janne6565.projectmanager.util.TestFixtures;
 import com.janne6565.projectmanager.config.TestConfig;
+import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -62,19 +62,17 @@ class SecurityIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(loginRequest)))
                 .andExpect(status().isOk())
+                .andExpect(cookie().exists("JWT-TOKEN"))
                 .andReturn();
 
-        LoginResponse loginResponse = objectMapper.readValue(
-                loginResult.getResponse().getContentAsString(),
-                LoginResponse.class
-        );
-        String token = loginResponse.getToken();
-        assertThat(token).isNotEmpty();
+        Cookie jwtCookie = loginResult.getResponse().getCookie("JWT-TOKEN");
+        assertThat(jwtCookie).isNotNull();
+        assertThat(jwtCookie.getValue()).isNotEmpty();
 
         // 2. Create a project
         Project newProject = TestFixtures.createTestProject("Integration Test Project", "E2E Test Description");
         MvcResult createResult = mockMvc.perform(post("/projects")
-                        .header("Authorization", "Bearer " + token)
+                        .cookie(jwtCookie)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(newProject)))
                 .andExpect(status().isOk())
@@ -101,7 +99,7 @@ class SecurityIntegrationTest {
 
         // 5. Delete the project
         mockMvc.perform(delete("/projects/" + createdProject.getUuid())
-                        .header("Authorization", "Bearer " + token))
+                        .cookie(jwtCookie))
                 .andExpect(status().isOk());
 
         // 6. Verify deletion
@@ -122,16 +120,13 @@ class SecurityIntegrationTest {
                 .andExpect(status().isOk())
                 .andReturn();
 
-        String token = objectMapper.readValue(
-                loginResult.getResponse().getContentAsString(),
-                LoginResponse.class
-        ).getToken();
+        Cookie jwtCookie = loginResult.getResponse().getCookie("JWT-TOKEN");
 
-        // Create multiple projects with the same token
+        // Create multiple projects with the same cookie
         for (int i = 1; i <= 3; i++) {
             Project project = TestFixtures.createTestProject("Project " + i, "Description " + i);
             mockMvc.perform(post("/projects")
-                            .header("Authorization", "Bearer " + token)
+                            .cookie(jwtCookie)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(project)))
                     .andExpect(status().isOk())
@@ -164,17 +159,14 @@ class SecurityIntegrationTest {
 
         // 4. Login and verify protected endpoints work
         LoginRequest loginRequest = new LoginRequest(TestFixtures.TEST_USERNAME, TestFixtures.TEST_PASSWORD);
-        String token = objectMapper.readValue(
-                mockMvc.perform(post("/auth/login")
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(objectMapper.writeValueAsString(loginRequest)))
-                        .andReturn().getResponse().getContentAsString(),
-                LoginResponse.class
-        ).getToken();
+        Cookie jwtCookie = mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(loginRequest)))
+                .andReturn().getResponse().getCookie("JWT-TOKEN");
 
         // POST with auth should work
         mockMvc.perform(post("/projects")
-                        .header("Authorization", "Bearer " + token)
+                        .cookie(jwtCookie)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(project)))
                 .andExpect(status().isOk());
@@ -202,21 +194,18 @@ class SecurityIntegrationTest {
 
     @Test
     void shouldHandleConcurrentRequestsWithSameToken() throws Exception {
-        // Get a valid token
+        // Get a valid cookie
         LoginRequest loginRequest = new LoginRequest(TestFixtures.TEST_USERNAME, TestFixtures.TEST_PASSWORD);
-        String token = objectMapper.readValue(
-                mockMvc.perform(post("/auth/login")
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(objectMapper.writeValueAsString(loginRequest)))
-                        .andReturn().getResponse().getContentAsString(),
-                LoginResponse.class
-        ).getToken();
+        Cookie jwtCookie = mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(loginRequest)))
+                .andReturn().getResponse().getCookie("JWT-TOKEN");
 
-        // Make multiple requests with the same token
+        // Make multiple requests with the same cookie
         for (int i = 0; i < 5; i++) {
             Project project = TestFixtures.createTestProject("Concurrent Project " + i, "Description " + i);
             mockMvc.perform(post("/projects")
-                            .header("Authorization", "Bearer " + token)
+                            .cookie(jwtCookie)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(project)))
                     .andExpect(status().isOk());
@@ -238,18 +227,15 @@ class SecurityIntegrationTest {
     void shouldCompleteUpdateFlow() throws Exception {
         // 1. Login
         LoginRequest loginRequest = new LoginRequest(TestFixtures.TEST_USERNAME, TestFixtures.TEST_PASSWORD);
-        String token = objectMapper.readValue(
-                mockMvc.perform(post("/auth/login")
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(objectMapper.writeValueAsString(loginRequest)))
-                        .andReturn().getResponse().getContentAsString(),
-                LoginResponse.class
-        ).getToken();
+        Cookie jwtCookie = mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(loginRequest)))
+                .andReturn().getResponse().getCookie("JWT-TOKEN");
 
         // 2. Create a project
         Project newProject = TestFixtures.createTestProject("Original Name", "Original Description");
         MvcResult createResult = mockMvc.perform(post("/projects")
-                        .header("Authorization", "Bearer " + token)
+                        .cookie(jwtCookie)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(newProject)))
                 .andExpect(status().isOk())
@@ -263,7 +249,7 @@ class SecurityIntegrationTest {
         // 3. Update the project
         Project updateData = TestFixtures.createTestProject("Updated Name", "Updated Description");
         mockMvc.perform(put("/projects/" + createdProject.getUuid())
-                        .header("Authorization", "Bearer " + token)
+                        .cookie(jwtCookie)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(updateData)))
                 .andExpect(status().isOk())
@@ -278,7 +264,7 @@ class SecurityIntegrationTest {
 
         // 5. Clean up
         mockMvc.perform(delete("/projects/" + createdProject.getUuid())
-                        .header("Authorization", "Bearer " + token))
+                        .cookie(jwtCookie))
                 .andExpect(status().isOk());
     }
 }

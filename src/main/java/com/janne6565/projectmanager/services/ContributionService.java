@@ -7,10 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -25,23 +22,26 @@ public class ContributionService {
 
     public Project updateProjectContributions(Project project, List<ContributionDto> contributions) {
         Project projectCopy = project.copy();
+        ArrayList<ContributionDto> contributionsList = new ArrayList<>();
+
+        Set<String> seenDays = new HashSet<>();
+        for (ContributionDto contribution : contributions) {
+            seenDays.add(contribution.day());
+            contributionsList.add(contribution);
+        }
+
         Map<String, List<ContributionDto>> existingContributionsByDay = new HashMap<>();
         if (project.getContributions() != null) {
             for (ContributionDto contribution : project.getContributions()) {
+                if (seenDays.contains(contribution.day())) {
+                    continue;
+                }
                 existingContributionsByDay.putIfAbsent(contribution.day(), new ArrayList<>());
                 existingContributionsByDay.get(contribution.day()).add(contribution);
             }
         }
 
-        Map<String, List<ContributionDto>> externalContributionsMap = new HashMap<>();
-        for (ContributionDto contribution : contributions) {
-            externalContributionsMap.putIfAbsent(contribution.day(), new ArrayList<>());
-            externalContributionsMap.get(contribution.day()).add(contribution);
-        }
-
-        for (String day : externalContributionsMap.keySet()) {
-            projectCopy.getContributions().addAll(externalContributionsMap.get(day));
-        }
+        projectCopy.setContributions(contributionsList);
 
         return projectCopy;
     }

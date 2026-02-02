@@ -10,6 +10,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -20,14 +21,14 @@ public class ProjectService {
 
     private final ProjectRepository projectRepository;
     private final ContributionService contributionService;
-    private final List<ContributionDto> unassignedContributions;
+    private List<ContributionDto> unassignedContributions;
 
     @Scheduled(fixedDelay = 2, timeUnit = TimeUnit.MINUTES)
     public void updateContributions() {
         List<ContributionDto> contributions = contributionService.getContributions();
         log.info("Fetched: {} contributions", contributions.size());
 
-        unassignedContributions.clear();
+        List<ContributionDto> newUnassignedContributions = new ArrayList<>();
         for (ContributionDto contribution : contributions) {
             boolean contributionAssigned = false;
             for (Project project : projectRepository.findAll()) {
@@ -37,13 +38,19 @@ public class ProjectService {
                 }
             }
             if (!contributionAssigned) {
-                unassignedContributions.add(contribution);
+                newUnassignedContributions.add(contribution);
             }
         }
+        unassignedContributions = newUnassignedContributions;
 
         for (Project project : projectRepository.findAll()) {
-            List<ContributionDto> filteredContributions = contributions.stream().filter(contribution -> doesRepositoryBelongToProject(contribution.repositoryUrl(), project)).toList();
-            projectRepository.save(contributionService.updateProjectContributions(project, filteredContributions));
+            List<ContributionDto> filteredContributions = contributions.stream()
+                    .filter(contribution -> doesRepositoryBelongToProject(contribution.repositoryUrl(), project)).toList();
+            Project updatedProject = contributionService.updateProjectContributions(project, filteredContributions);
+            updatedProject.setContributions(updatedProject.getContributions().stream()
+                    .filter(contribution ->
+                            doesRepositoryBelongToProject(contribution.repositoryUrl(), project)).toList());
+            projectRepository.save(updatedProject);
         }
     }
 
@@ -52,7 +59,19 @@ public class ProjectService {
     }
 
     private boolean doesRepositoryBelongToProject(String repository, Project project) {
-        return project.getRepositories().stream().map(String::toLowerCase).toList().contains(repository.toLowerCase());
+        if (project.getRepositories() == null) {
+            return false;
+        }
+        return project.getRepositories().stream().map(this::normalizeRepository).toList()
+                .contains(normalizeRepository(repository));
+    }
+
+    private String normalizeRepository(String repository) {
+        String toLower = repository.toLowerCase();
+        String trimmed = toLower.trim();
+        String withoutHttp = trimmed.replaceFirst("^https?://", "");
+        String withoutTrailingSlash = withoutHttp.replaceAll("/$", "");
+        return withoutTrailingSlash;
     }
 
     public Project createProject(Project project) {
@@ -89,5 +108,14 @@ public class ProjectService {
 
     public void deleteProject(String uuid) {
         projectRepository.deleteById(uuid);
+    }
+
+    public Project updateProjectIndex(String uuid, int index) {
+        return projectRepository.findById(uuid)
+                .map(project -> {
+                    project.setIndex(index);
+                    return projectRepository.save(project);
+                })
+                .orElse(null);
     }
 }
