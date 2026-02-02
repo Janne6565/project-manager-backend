@@ -25,6 +25,9 @@ public class Project {
     private Integer index;
     private String name;
     private String description;
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean isVisible = true;
     @JdbcTypeCode(SqlTypes.JSON)
     private Map<String, String> additionalInformation;
     @JdbcTypeCode(SqlTypes.JSON)
@@ -38,6 +41,7 @@ public class Project {
                 .index(index)
                 .name(name)
                 .description(description)
+                .isVisible(isVisible)
                 .additionalInformation(additionalInformation != null ? new HashMap<>(additionalInformation) : new HashMap<>())
                 .repositories(repositories != null ? new ArrayList<>(repositories) : new ArrayList())
                 .contributions(contributions != null ? new ArrayList<>(contributions) : new ArrayList())

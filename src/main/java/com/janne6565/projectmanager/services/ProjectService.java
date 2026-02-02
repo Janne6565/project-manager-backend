@@ -111,6 +111,9 @@ public class ProjectService {
     public Project createProject(Project project) {
         project.setUuid(null);
         project.setIndex((int) projectRepository.count() + 1);
+        if (project.getIsVisible() == null) {
+            project.setIsVisible(true);
+        }
         Project createdProject = projectRepository.save(project);
         updateContributions();
         return createdProject;
@@ -123,6 +126,9 @@ public class ProjectService {
                     existingProject.setDescription(project.getDescription());
                     existingProject.setAdditionalInformation(project.getAdditionalInformation());
                     existingProject.setRepositories(project.getRepositories());
+                    if (project.getIsVisible() != null) {
+                        existingProject.setIsVisible(project.getIsVisible());
+                    }
                     return projectRepository.save(existingProject);
                 })
                 .orElse(null);
@@ -130,7 +136,22 @@ public class ProjectService {
         return newProject;
     }
 
+    public Project toggleProjectVisibility(String uuid) {
+        return projectRepository.findById(uuid)
+                .map(project -> {
+                    project.setIsVisible(!Boolean.TRUE.equals(project.getIsVisible()));
+                    return projectRepository.save(project);
+                })
+                .orElse(null);
+    }
+
     public Iterable<Project> getProjects() {
+        return projectRepository.findAll().stream()
+                .filter(project -> Boolean.TRUE.equals(project.getIsVisible()))
+                .toList();
+    }
+
+    public Iterable<Project> getAllProjects() {
         return projectRepository.findAll();
     }
 

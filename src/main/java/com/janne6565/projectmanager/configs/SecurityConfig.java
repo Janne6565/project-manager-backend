@@ -28,7 +28,12 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/auth/**").permitAll()
-                        .requestMatchers(HttpMethod.GET).permitAll()
+                        .requestMatchers("/admin/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/projects/**", "/contributions/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/projects/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/projects/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PATCH, "/projects/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/projects/**").hasRole("ADMIN")
                         .anyRequest().hasRole("ADMIN")
                 )
                 .sessionManagement(session -> session

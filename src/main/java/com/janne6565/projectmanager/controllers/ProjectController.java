@@ -52,4 +52,13 @@ public class ProjectController {
         }
         return ResponseEntity.ok(updatedProject);
     }
+
+    @PatchMapping("/{uuid}/visibility")
+    public ResponseEntity<Project> toggleProjectVisibility(@PathVariable String uuid) {
+        Project updatedProject = projectService.toggleProjectVisibility(uuid);
+        if (updatedProject == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(updatedProject);
+    }
 }
