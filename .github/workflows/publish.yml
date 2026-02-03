@@ -44,7 +44,7 @@ jobs:
 
       - name: Update image name in pom.xml
         run: |
-          sed -i "s|<name>project-fetcher:\${project.version}</name>|<name>${{ env.REGISTRY }}/${{ steps.image.outputs.IMAGE_NAME_LOWER }}:${{ steps.version.outputs.VERSION }}</name>|" pom.xml
+          sed -i "s|<name>project-manager:\${project.version}</name>|<name>${{ env.REGISTRY }}/${{ steps.image.outputs.IMAGE_NAME_LOWER }}:${{ steps.version.outputs.VERSION }}</name>|" pom.xml
 
       - name: Build image
         run: ./mvnw spring-boot:build-image
