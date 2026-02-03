@@ -7,6 +7,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/projects")
@@ -15,8 +17,12 @@ public class ProjectController {
     private final ProjectService projectService;
 
     @GetMapping
-    public ResponseEntity<Iterable<Project>> getProjects() {
-        return ResponseEntity.ok(projectService.getProjects());
+    public ResponseEntity<List<Project>> getProjects(@RequestParam(required = false, defaultValue = "true") boolean includeContributions) {
+        List<Project> projects = projectService.getProjects().stream().peek(project -> {
+            if (!includeContributions) project.setContributions(null);
+        }).toList();
+
+        return ResponseEntity.ok(projects);
     }
 
     @GetMapping("/{uuid}")

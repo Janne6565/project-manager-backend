@@ -147,13 +147,13 @@ public class ProjectService {
                 .orElse(null);
     }
 
-    public Iterable<Project> getProjects() {
+    public List<Project> getProjects() {
         return projectRepository.findAll().stream()
                 .filter(project -> Boolean.TRUE.equals(project.getIsVisible()))
                 .toList();
     }
 
-    public Iterable<Project> getAllProjects() {
+    public List<Project> getAllProjects() {
         return projectRepository.findAll();
     }
 
