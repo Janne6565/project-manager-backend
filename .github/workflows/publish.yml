@@ -46,8 +46,8 @@ jobs:
         run: |
           sed -i "s|<name>project-fetcher:\${project.version}</name>|<name>${{ env.REGISTRY }}/${{ steps.image.outputs.IMAGE_NAME_LOWER }}:${{ steps.version.outputs.VERSION }}</name>|" pom.xml
 
-      - name: Build native image
-        run: ./mvnw -Pnative spring-boot:build-image
+      - name: Build image
+        run: ./mvnw spring-boot:build-image
 
       - name: Tag image as latest
         run: |
