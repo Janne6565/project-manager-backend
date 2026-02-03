@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: project-manager
-          image: ghcr.io/janne6565/project-manager-backend:0.0.3
+          image: ghcr.io/janne6565/project-manager-backend:0.0.4
           ports:
             - containerPort: 8080
           env:
