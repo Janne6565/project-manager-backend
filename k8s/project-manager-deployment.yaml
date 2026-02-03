@@ -18,6 +18,11 @@ spec:
           ports:
             - containerPort: 8080
           env:
+            - name: SPRING_SECURITY_USER_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: project-manager-secret
+                  key: password
             - name: SPRING_DATASOURCE_URL
               value: jdbc:postgresql://postgres:5432/projectmanager
             - name: SPRING_DATASOURCE_USERNAME
