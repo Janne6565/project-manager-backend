@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: project-manager
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: project-manager
+  template:
+    metadata:
+      labels:
+        app: project-manager
+    spec:
+      containers:
+      - name: project-manager
+        image: docker.io/library/project-manager:0.0.1-SNAPSHOT
+        ports:
+        - containerPort: 8080
+        env:
+        - name: SPRING_DATASOURCE_URL
+          value: jdbc:postgresql://postgres:5432/projectmanager
+        - name: SPRING_DATASOURCE_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: username
+        - name: SPRING_DATASOURCE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: password
+        - name: SPRING_DATASOURCE_DRIVER_CLASS_NAME
+          value: org.postgresql.Driver
+        - name: SPRING_JPA_DATABASE_PLATFORM
+          value: org.hibernate.dialect.PostgreSQLDialect
+        - name: SPRING_JPA_HIBERNATE_DDL_AUTO
+          value: update
+        livenessProbe:
+          httpGet:
+            path: /api/v1/actuator/health
+            port: 8080
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /api/v1/actuator/health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 5
+          failureThreshold: 3
