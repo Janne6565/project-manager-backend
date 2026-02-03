@@ -36,6 +36,11 @@ spec:
               value: org.hibernate.dialect.PostgreSQLDialect
             - name: SPRING_JPA_HIBERNATE_DDL_AUTO
               value: update
+            - name: CORS_ALLOWED_ORIGINS
+              value: | 
+                  - https://project-manager.jannekeipert.de
+                  - https://projektejwkk.de
+                  - https://jannekeipert.de
           livenessProbe:
             httpGet:
               path: /api/v1/actuator/health
