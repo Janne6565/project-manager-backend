@@ -46,6 +46,7 @@ spec:
                   - https://project-manager.jannekeipert.de
                   - https://projektejwkk.de
                   - https://jannekeipert.de
+                  - http://localhost:5173
           livenessProbe:
             httpGet:
               path: /api/v1/actuator/health
