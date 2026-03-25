@@ -1,14 +1,20 @@
 package com.janne6565.projectmanager.repositories;
 
+import com.janne6565.projectmanager.dto.external.contributions.ContributionSummaryDto;
+import com.janne6565.projectmanager.dto.external.contributions.ContributionTotalsDto;
 import com.janne6565.projectmanager.entities.Project;
+import com.janne6565.projectmanager.services.external.ExternalContributionService;
 import com.janne6565.projectmanager.util.TestFixtures;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
+import reactor.core.publisher.Mono;
 
 import java.util.Optional;
 
@@ -21,6 +27,17 @@ class ProjectRepositoryTest {
 
     @Autowired
     private ProjectRepository projectRepository;
+
+    @MockitoBean
+    private ExternalContributionService externalContributionService;
+
+    @BeforeEach
+    void setup() {
+        ContributionSummaryDto emptySummary = new ContributionSummaryDto(
+                java.util.Map.of(), java.util.List.of(), new ContributionTotalsDto(0, 0, 0, 0));
+        org.mockito.Mockito.when(externalContributionService.getContributions())
+                .thenReturn(Mono.just(emptySummary));
+    }
 
     @Test
     void shouldSaveProject() {
