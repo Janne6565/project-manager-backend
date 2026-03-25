@@ -55,4 +55,4 @@ cors:
 
 external:
   contributions:
-    url: http://localhost:8080/api # https://project-fetcher.jannekeipert.de/api
+    url: https://project-fetcher.jannekeipert.de/api
