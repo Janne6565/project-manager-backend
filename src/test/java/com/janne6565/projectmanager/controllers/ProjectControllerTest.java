@@ -3,7 +3,10 @@ package com.janne6565.projectmanager.controllers;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.janne6565.projectmanager.dto.LoginRequest;
 import com.janne6565.projectmanager.entities.Project;
+import com.janne6565.projectmanager.dto.external.contributions.ContributionSummaryDto;
+import com.janne6565.projectmanager.dto.external.contributions.ContributionTotalsDto;
 import com.janne6565.projectmanager.repositories.ProjectRepository;
+import com.janne6565.projectmanager.services.external.ExternalContributionService;
 import com.janne6565.projectmanager.util.TestFixtures;
 import com.janne6565.projectmanager.config.TestConfig;
 import jakarta.servlet.http.Cookie;
@@ -15,10 +18,12 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
+import reactor.core.publisher.Mono;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
@@ -39,6 +44,9 @@ class ProjectControllerTest {
     @Autowired
     private ProjectRepository projectRepository;
 
+    @MockitoBean
+    private ExternalContributionService externalContributionService;
+
     private MockMvc mockMvc;
 
     @BeforeEach
@@ -47,6 +55,11 @@ class ProjectControllerTest {
                 .webAppContextSetup(context)
                 .apply(springSecurity())
                 .build();
+
+        ContributionSummaryDto emptySummary = new ContributionSummaryDto(
+                java.util.Map.of(), java.util.List.of(), new ContributionTotalsDto(0, 0, 0, 0));
+        org.mockito.Mockito.when(externalContributionService.getContributions())
+                .thenReturn(Mono.just(emptySummary));
     }
 
     @AfterEach
