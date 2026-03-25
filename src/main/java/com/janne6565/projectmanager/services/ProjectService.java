@@ -1,6 +1,7 @@
 package com.janne6565.projectmanager.services;
 
-import com.janne6565.projectmanager.dto.external.contributions.ContributionDto;
+import com.janne6565.projectmanager.dto.external.contributions.ContributionSummaryDto;
+import com.janne6565.projectmanager.dto.external.contributions.RepositoryContributionDto;
 import com.janne6565.projectmanager.entities.Project;
 import com.janne6565.projectmanager.repositories.ProjectRepository;
 import lombok.RequiredArgsConstructor;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
@@ -22,41 +24,50 @@ public class ProjectService {
 
     private final ProjectRepository projectRepository;
     private final ContributionService contributionService;
-    private List<ContributionDto> unassignedContributions;
+    private List<RepositoryContributionDto> unassignedContributions;
+    private Map<String, Integer> contributionCalendar;
 
     @Scheduled(fixedDelay = 2, timeUnit = TimeUnit.MINUTES)
     public void updateContributions() {
-        List<ContributionDto> contributions = contributionService.getContributions();
-        log.info("Fetched: {} contributions", contributions.size());
+        ContributionSummaryDto summary = contributionService.getContributions();
+        if (summary == null) return;
 
-        List<ContributionDto> newUnassignedContributions = new ArrayList<>();
-        for (ContributionDto contribution : contributions) {
-            boolean contributionAssigned = false;
+        log.info("Updating contributions...");
+        List<RepositoryContributionDto> repositories = summary.repositories();
+        log.info("Fetched: {} repository contributions", repositories.size());
+
+        contributionCalendar = summary.calendar();
+
+        List<RepositoryContributionDto> newUnassigned = new ArrayList<>();
+        for (RepositoryContributionDto repo : repositories) {
+            boolean assigned = false;
             for (Project project : projectRepository.findAll()) {
-                if (doesRepositoryBelongToProject(contribution.repositoryUrl(), project)) {
-                    contributionAssigned = true;
+                if (doesRepositoryBelongToProject(repo.url(), project)) {
+                    assigned = true;
                     break;
                 }
             }
-            if (!contributionAssigned) {
-                newUnassignedContributions.add(contribution);
+            if (!assigned) {
+                newUnassigned.add(repo);
             }
         }
-        unassignedContributions = newUnassignedContributions;
+        unassignedContributions = newUnassigned;
 
         for (Project project : projectRepository.findAll()) {
-            List<ContributionDto> filteredContributions = contributions.stream()
-                    .filter(contribution -> doesRepositoryBelongToProject(contribution.repositoryUrl(), project)).toList();
-            Project updatedProject = contributionService.updateProjectContributions(project, filteredContributions);
-            updatedProject.setContributions(updatedProject.getContributions().stream()
-                    .filter(contribution ->
-                            doesRepositoryBelongToProject(contribution.repositoryUrl(), project)).toList());
-            projectRepository.save(updatedProject);
+            List<RepositoryContributionDto> matched = repositories.stream()
+                    .filter(repo -> doesRepositoryBelongToProject(repo.url(), project))
+                    .toList();
+            project.setContributions(matched);
+            projectRepository.save(project);
         }
     }
 
-    public List<ContributionDto> getUnassignedContributions() {
+    public List<RepositoryContributionDto> getUnassignedContributions() {
         return unassignedContributions;
+    }
+
+    public Map<String, Integer> getContributionCalendar() {
+        return contributionCalendar;
     }
 
     private boolean doesRepositoryBelongToProject(String repository, Project project) {
@@ -69,12 +80,10 @@ public class ProjectService {
                 .map(this::normalizeRepository)
                 .toList();
 
-        // First, try exact match (backward compatibility)
         if (normalizedConfiguredRepos.contains(normalizedRepository)) {
             return true;
         }
 
-        // Second, try glob pattern matching
         return normalizedConfiguredRepos.stream()
                 .filter(configuredRepo -> configuredRepo.contains("*"))
                 .anyMatch(pattern -> matchesGlobPattern(normalizedRepository, pattern));

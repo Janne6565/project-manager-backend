@@ -1,6 +1,8 @@
 package com.janne6565.projectmanager.services;
 
-import com.janne6565.projectmanager.dto.external.contributions.ContributionDto;
+import com.janne6565.projectmanager.dto.external.contributions.ContributionSummaryDto;
+import com.janne6565.projectmanager.dto.external.contributions.ContributionTotalsDto;
+import com.janne6565.projectmanager.dto.external.contributions.RepositoryContributionDto;
 import com.janne6565.projectmanager.entities.Project;
 import com.janne6565.projectmanager.repositories.ProjectRepository;
 import com.janne6565.projectmanager.util.TestFixtures;
@@ -17,6 +19,7 @@ import org.springframework.data.domain.PageRequest;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -32,17 +35,20 @@ class ProjectServiceTest {
     @Mock
     private ContributionService contributionService;
 
-    @Mock
-    private List<ContributionDto> unassignedContributions;
-
     @InjectMocks
     private ProjectService projectService;
+
+    private static ContributionSummaryDto emptySummary() {
+        return new ContributionSummaryDto(Map.of(), List.of(), new ContributionTotalsDto(0, 0, 0, 0));
+    }
 
     @Test
     void shouldCreateProject() {
         Project project = TestFixtures.createTestProject("New Project", "Description");
         Project savedProject = TestFixtures.createTestProjectWithId("test-uuid", "New Project", "Description");
         when(projectRepository.save(any(Project.class))).thenReturn(savedProject);
+        when(contributionService.getContributions()).thenReturn(emptySummary());
+        when(projectRepository.findAll()).thenReturn(List.of(savedProject));
 
         Project result = projectService.createProject(project);
 
@@ -59,12 +65,11 @@ class ProjectServiceTest {
         Project updateData = TestFixtures.createTestProject("New Name", "New Description");
         Project updatedProject = TestFixtures.createTestProjectWithId("test-uuid", "New Name", "New Description");
         updatedProject.setContributions(new ArrayList<>());
-        
+
         when(projectRepository.findById("test-uuid")).thenReturn(Optional.of(existingProject));
         when(projectRepository.save(any(Project.class))).thenReturn(updatedProject);
         when(projectRepository.findAll()).thenReturn(List.of(updatedProject));
-        when(contributionService.getContributions()).thenReturn(List.of());
-        when(contributionService.updateProjectContributions(any(), any())).thenReturn(updatedProject);
+        when(contributionService.getContributions()).thenReturn(emptySummary());
 
         Project result = projectService.updateProject("test-uuid", updateData);
 
@@ -79,7 +84,7 @@ class ProjectServiceTest {
         Project updateData = TestFixtures.createTestProject("New Name", "New Description");
         when(projectRepository.findById("non-existent")).thenReturn(Optional.empty());
         when(projectRepository.findAll()).thenReturn(List.of());
-        when(contributionService.getContributions()).thenReturn(List.of());
+        when(contributionService.getContributions()).thenReturn(emptySummary());
 
         Project result = projectService.updateProject("non-existent", updateData);
 
@@ -152,141 +157,141 @@ class ProjectServiceTest {
 
     @Nested
     class RepositoryPatternMatchingTests {
-        
+
         @Test
         void shouldMatchExactRepositoryUrl() throws Exception {
             Project project = Project.builder()
                     .repositories(List.of("github.com/janne6565/projectmanager"))
                     .build();
-            
+
             boolean result = invokeDoesRepositoryBelongToProject("https://github.com/janne6565/projectmanager", project);
-            
+
             assertThat(result).isTrue();
         }
-        
+
         @Test
         void shouldMatchExactRepositoryUrlWithDifferentCasing() throws Exception {
             Project project = Project.builder()
                     .repositories(List.of("github.com/janne6565/ProjectManager"))
                     .build();
-            
+
             boolean result = invokeDoesRepositoryBelongToProject("https://GitHub.com/Janne6565/projectmanager/", project);
-            
+
             assertThat(result).isTrue();
         }
-        
+
         @Test
         void shouldMatchSingleWildcardPattern() throws Exception {
             Project project = Project.builder()
                     .repositories(List.of("github.com/janne6565/*"))
                     .build();
-            
+
             boolean result1 = invokeDoesRepositoryBelongToProject("https://github.com/janne6565/projectmanager", project);
             boolean result2 = invokeDoesRepositoryBelongToProject("https://github.com/janne6565/another-repo", project);
             boolean result3 = invokeDoesRepositoryBelongToProject("https://github.com/otheruser/projectmanager", project);
-            
+
             assertThat(result1).isTrue();
             assertThat(result2).isTrue();
             assertThat(result3).isFalse();
         }
-        
+
         @Test
         void shouldMatchMultipleWildcards() throws Exception {
             Project project = Project.builder()
                     .repositories(List.of("github.com/*/projectmanager*"))
                     .build();
-            
+
             boolean result1 = invokeDoesRepositoryBelongToProject("https://github.com/janne6565/projectmanager", project);
             boolean result2 = invokeDoesRepositoryBelongToProject("https://github.com/otheruser/projectmanager", project);
             boolean result3 = invokeDoesRepositoryBelongToProject("https://github.com/someone/projectmanager-backend", project);
             boolean result4 = invokeDoesRepositoryBelongToProject("https://github.com/janne6565/different-repo", project);
-            
+
             assertThat(result1).isTrue();
             assertThat(result2).isTrue();
             assertThat(result3).isTrue();
             assertThat(result4).isFalse();
         }
-        
+
         @Test
         void shouldMatchWildcardPrefix() throws Exception {
             Project project = Project.builder()
                     .repositories(List.of("github.com/janne6565/project*"))
                     .build();
-            
+
             boolean result1 = invokeDoesRepositoryBelongToProject("https://github.com/janne6565/project", project);
             boolean result2 = invokeDoesRepositoryBelongToProject("https://github.com/janne6565/project1", project);
             boolean result3 = invokeDoesRepositoryBelongToProject("https://github.com/janne6565/projectmanager", project);
             boolean result4 = invokeDoesRepositoryBelongToProject("https://github.com/janne6565/myproject", project);
-            
+
             assertThat(result1).isTrue();
             assertThat(result2).isTrue();
             assertThat(result3).isTrue();
             assertThat(result4).isFalse();
         }
-        
+
         @Test
         void shouldNotMatchWhenNoRepositoriesConfigured() throws Exception {
             Project project = Project.builder()
                     .repositories(null)
                     .build();
-            
+
             boolean result = invokeDoesRepositoryBelongToProject("https://github.com/janne6565/projectmanager", project);
-            
+
             assertThat(result).isFalse();
         }
-        
+
         @Test
         void shouldNotMatchWhenRepositoryListIsEmpty() throws Exception {
             Project project = Project.builder()
                     .repositories(new ArrayList<>())
                     .build();
-            
+
             boolean result = invokeDoesRepositoryBelongToProject("https://github.com/janne6565/projectmanager", project);
-            
+
             assertThat(result).isFalse();
         }
-        
+
         @Test
         void shouldMatchWildcardInMiddle() throws Exception {
             Project project = Project.builder()
                     .repositories(List.of("github.com/*/backend"))
                     .build();
-            
+
             boolean result1 = invokeDoesRepositoryBelongToProject("https://github.com/janne6565/backend", project);
             boolean result2 = invokeDoesRepositoryBelongToProject("https://github.com/otheruser/backend", project);
             boolean result3 = invokeDoesRepositoryBelongToProject("https://github.com/janne6565/frontend", project);
-            
+
             assertThat(result1).isTrue();
             assertThat(result2).isTrue();
             assertThat(result3).isFalse();
         }
-        
+
         @Test
         void shouldHandleSpecialRegexCharactersInPattern() throws Exception {
             Project project = Project.builder()
                     .repositories(List.of("github.com/janne6565/project.manager*"))
                     .build();
-            
+
             boolean result1 = invokeDoesRepositoryBelongToProject("https://github.com/janne6565/project.manager", project);
             boolean result2 = invokeDoesRepositoryBelongToProject("https://github.com/janne6565/project.manager-v2", project);
             boolean result3 = invokeDoesRepositoryBelongToProject("https://github.com/janne6565/projectXmanager", project);
-            
+
             assertThat(result1).isTrue();
             assertThat(result2).isTrue();
             assertThat(result3).isFalse();
         }
-        
+
         @Test
         void shouldPreferExactMatchOverPattern() throws Exception {
             Project project = Project.builder()
                     .repositories(List.of("github.com/janne6565/*", "github.com/janne6565/projectmanager"))
                     .build();
-            
+
             boolean result = invokeDoesRepositoryBelongToProject("https://github.com/janne6565/projectmanager", project);
-            
+
             assertThat(result).isTrue();
         }
-        
+
         private boolean invokeDoesRepositoryBelongToProject(String repository, Project project) throws Exception {
             Method method = ProjectService.class.getDeclaredMethod("doesRepositoryBelongToProject", String.class, Project.class);
             method.setAccessible(true);

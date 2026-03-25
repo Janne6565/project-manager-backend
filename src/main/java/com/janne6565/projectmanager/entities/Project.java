@@ -1,6 +1,6 @@
 package com.janne6565.projectmanager.entities;
 
-import com.janne6565.projectmanager.dto.external.contributions.ContributionDto;
+import com.janne6565.projectmanager.dto.external.contributions.RepositoryContributionDto;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
@@ -38,7 +38,7 @@ public class Project {
     @JdbcTypeCode(SqlTypes.JSON)
     private List<String> repositories;
     @JdbcTypeCode(SqlTypes.JSON)
-    private List<ContributionDto> contributions;
+    private List<RepositoryContributionDto> contributions;
 
     public Project copy() {
         return Project.builder()
