@@ -12,6 +12,7 @@ public class ContributionService {
     private final ExternalContributionService externalContributionService;
 
     public ContributionSummaryDto getContributions() {
-        return externalContributionService.getContributions().block();
+        var mono = externalContributionService.getContributions();
+        return mono != null ? mono.block() : null;
     }
 }
