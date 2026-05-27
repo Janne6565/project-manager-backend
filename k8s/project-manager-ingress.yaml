@@ -17,5 +17,5 @@ spec:
                 name: project-manager
                 port:
                   number: 8080
-            path: /api
+            path: /api/
             pathType: Prefix
