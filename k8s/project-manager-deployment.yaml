@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: project-manager
-          image: ghcr.io/janne6565/project-manager-backend:1.1.0
+          image: ghcr.io/janne6565/project-manager-backend:1.2.0
           imagePullPolicy: Always
           ports:
             - containerPort: 8080
@@ -41,9 +41,28 @@ spec:
             - name: SPRING_JPA_DATABASE_PLATFORM
               value: org.hibernate.dialect.PostgreSQLDialect
             - name: SPRING_JPA_HIBERNATE_DDL_AUTO
-              value: update
+              value: validate
             - name: CORS_ALLOWED_ORIGINS
               value: "https://project-manager.jannekeipert.de,https://projektejwkk.de,https://jannekeipert.de,http://localhost:5173"
+            - name: PROJECTMANAGER_OAUTH_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: project-manager-secret
+                  key: oauthClientId
+            - name: PROJECTMANAGER_OAUTH_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: project-manager-secret
+                  key: oauthClientSecret
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: project-manager-secret
+                  key: jwtSecret
+            - name: PROJECTMANAGER_FRONTEND_URL
+              value: "https://project-manager.jannekeipert.de"
+            - name: PROJECTMANAGER_OAUTH_CALLBACK_URI
+              value: "https://project-manager.jannekeipert.de/api/v1/auth/oauth/authentik/callback"
           livenessProbe:
             httpGet:
               path: /api/v1/actuator/health
