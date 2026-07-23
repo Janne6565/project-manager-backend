@@ -7,6 +7,8 @@ spring:
     name: ProjectManager
   security:
     user:
+      # Bootstrap owner credentials. Consumed once by OwnerSeeder when no OWNER exists yet
+      # (SPRING_SECURITY_USER_PASSWORD in the cluster). No longer an in-memory login.
       name: janne
       password: adminpassword
       roles: ADMIN
@@ -15,10 +17,19 @@ spring:
     database-platform: org.hibernate.dialect.H2Dialect
     show-sql: false
     hibernate:
-      ddl-auto: update
+      # Schema is owned by Flyway; Hibernate only validates against it.
+      ddl-auto: validate
     properties:
       hibernate:
         format_sql: true
+
+  flyway:
+    enabled: true
+    # Existing production DB (created by the previous ddl-auto=update) is baselined at V1
+    # without executing it; fresh databases run V1 then V2.
+    baseline-on-migrate: true
+    # Vendor-specific DDL: {vendor} resolves to `postgresql` (cluster) or `h2` (local/tests).
+    locations: classpath:db/migration/{vendor}
 
   datasource:
     url: jdbc:h2:file:./data;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
@@ -28,11 +39,31 @@ spring:
 
 jwt:
   secret: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
-  expiration: 86400000
+  access-token-ttl: ${JWT_ACCESS_TOKEN_TTL:PT1H}
+  refresh-token-ttl: ${JWT_REFRESH_TOKEN_TTL:P30D}
+  issuer: project-manager
   cookie:
-    name: JWT-TOKEN
-    secure: false
-    same-site: Lax
+    secure: ${JWT_COOKIE_SECURE:true}
+
+projectmanager:
+  frontend:
+    # Where OAuth callbacks redirect the browser after login (success -> /, failure -> /login?oauthError=...).
+    url: ${PROJECTMANAGER_FRONTEND_URL:http://localhost:5173}
+  oauth:
+    # Federated OIDC login (Authentik). client-id/secret injected via env in real deployments.
+    providers:
+      authentik:
+        client-id: ${PROJECTMANAGER_OAUTH_CLIENT_ID:}
+        client-secret: ${PROJECTMANAGER_OAUTH_CLIENT_SECRET:}
+        authorization-uri: https://sso.jannekeipert.de/application/o/authorize/
+        token-uri: https://sso.jannekeipert.de/application/o/token/
+        user-info-uri: https://sso.jannekeipert.de/application/o/userinfo/
+        scope: "openid email profile"
+        callback-uri: ${PROJECTMANAGER_OAUTH_CALLBACK_URI:http://localhost:8080/api/v1/auth/oauth/authentik/callback}
+    # Authentik groups that gate access and map to the coarse role.
+    groups:
+      admin: project-manager-admins
+      user: project-manager-users
 
 cors:
   enabled: true
