@@ -28,6 +28,9 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/auth/**").permitAll()
+                        // Actuator (health + prometheus only) is served on the separate management
+                        // port 8081, which no Ingress routes to: Traefik sends /api/ on the public
+                        // host to 8080 only, so this is reachable from inside the cluster alone.
                         .requestMatchers("/actuator/**").permitAll()
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/projects/**", "/contributions/**").permitAll()

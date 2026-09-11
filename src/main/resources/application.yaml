@@ -37,6 +37,53 @@ spring:
     username: sa
     password: password
 
+management:
+  server:
+    # Actuator lives on its own port, outside the /api/v1 context path. The public Ingress
+    # routes the whole /api/ prefix to 8080, so on the app port /api/v1/actuator/** would be
+    # reachable from the internet. No Ingress points at 8081; only the k8s probes and the
+    # in-cluster Alloy scrape (ServiceMonitor) use it.
+    port: 8081
+  endpoints:
+    web:
+      exposure:
+        # Health (k8s probes) + Prometheus scrape endpoint.
+        include: health,prometheus
+  endpoint:
+    health:
+      # Expose /actuator/health/{liveness,readiness} for the Kubernetes probes.
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      # Stamp every meter with the app name so a shared backend can tell services apart.
+      application: ${spring.application.name}
+    # The whole cluster shares Grafana Cloud's 10k-series free tier, so this service is
+    # kept lean (budget: <= 200 series).
+    distribution:
+      # Client-side percentiles instead of a bucket histogram: Alloy drops every `_bucket`
+      # series anyway. Percentiles are computed in this JVM and cannot be re-aggregated
+      # across replicas; fine at one replica, revisit before scaling out. No p50: with ~20
+      # endpoints it would push this service past its budget, and _sum/_count give the mean.
+      percentiles-histogram:
+        http.server.requests: false
+      percentiles:
+        http.server.requests: 0.95, 0.99
+    # Meter families nobody reads, cut for the series budget.
+    enable:
+      spring.security: false
+      spring.data.repository: false
+      tomcat.sessions: false
+      jvm.buffer: false
+      jvm.classes: false
+      jvm.compilation: false
+      executor: false
+      tasks.scheduled: false
+      application.started.time: false
+      application.ready.time: false
+      http.server.requests.active: false
+      process.files: false
+
 jwt:
   secret: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
   access-token-ttl: ${JWT_ACCESS_TOKEN_TTL:PT1H}
