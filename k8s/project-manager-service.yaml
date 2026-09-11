@@ -2,10 +2,18 @@ apiVersion: v1
 kind: Service
 metadata:
   name: project-manager
+  labels:
+    app: project-manager
 spec:
   selector:
     app: project-manager
   ports:
-  - port: 8080
+  - name: http
+    port: 8080
     targetPort: 8080
+  # Actuator management port (health + prometheus). No Ingress routes to it; it exists so
+  # the ServiceMonitor can scrape /actuator/prometheus from inside the cluster.
+  - name: metrics
+    port: 8081
+    targetPort: 8081
   type: ClusterIP

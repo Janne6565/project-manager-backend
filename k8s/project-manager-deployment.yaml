@@ -14,10 +14,13 @@ spec:
     spec:
       containers:
         - name: project-manager
-          image: ghcr.io/janne6565/project-manager-backend:1.2.0
+          image: ghcr.io/janne6565/project-manager-backend:1.3.0
           imagePullPolicy: Always
           ports:
-            - containerPort: 8080
+            - name: http
+              containerPort: 8080
+            - name: metrics
+              containerPort: 8081
           env:
             - name: SPRING_SECURITY_USER_PASSWORD
               valueFrom:
@@ -63,17 +66,18 @@ spec:
               value: "https://project-manager.jannekeipert.de"
             - name: PROJECTMANAGER_OAUTH_CALLBACK_URI
               value: "https://project-manager.jannekeipert.de/api/v1/auth/oauth/authentik/callback"
+          # Actuator runs on the management port (8081), outside the /api/v1 context path.
           livenessProbe:
             httpGet:
-              path: /api/v1/actuator/health
-              port: 8080
+              path: /actuator/health/liveness
+              port: metrics
             initialDelaySeconds: 60
             periodSeconds: 10
             failureThreshold: 3
           readinessProbe:
             httpGet:
-              path: /api/v1/actuator/health
-              port: 8080
+              path: /actuator/health/readiness
+              port: metrics
             initialDelaySeconds: 30
             periodSeconds: 5
             failureThreshold: 3
